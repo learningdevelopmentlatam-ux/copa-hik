@@ -180,7 +180,8 @@ export default function EvaluadorView({ session }) {
   }
 
   function handlePuntaje(tareaId, value) {
-    setPuntajes((p) => ({ ...p, [tareaId]: value }));
+    const match = value.match(/^(\d*\.?\d?)/);
+    setPuntajes((p) => ({ ...p, [tareaId]: match ? match[1] : value }));
   }
 
   function clampPuntaje(tareaId, max) {
@@ -280,6 +281,23 @@ export default function EvaluadorView({ session }) {
           {toast}
         </div>
       )}
+
+      {/* Guía del evaluador */}
+      <div style={{
+        padding: "12px 14px", borderRadius: 10, marginBottom: 14,
+        background: "rgba(255,255,255,0.03)",
+        border: "1px solid rgba(255,255,255,0.06)",
+      }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "#FF9800", marginBottom: 6 }}>
+          ¿Cómo evaluar?
+        </div>
+        <div style={{ fontSize: 11, color: "#999", lineHeight: 1.6 }}>
+          1. Selecciona el grupo que vas a calificar<br />
+          2. Asigna el puntaje de cada tarea (máx. 2.0 pts c/u)<br />
+          3. Presiona "Guardar Calificaciones"<br />
+          Los cambios se sincronizan entre todos los evaluadores.
+        </div>
+      </div>
 
       {/* Timer de fase activa */}
       {faseActiva && (
@@ -520,6 +538,15 @@ export default function EvaluadorView({ session }) {
                 );
               })}
             </div>
+            <div style={{
+              display: "flex", gap: 12, marginTop: 8, flexWrap: "wrap",
+              fontSize: 10, color: "#666",
+            }}>
+              <span><span style={{ color: "#4CAF50" }}>●</span> Calificado</span>
+              <span><span style={{ color: "#FF9800" }}>●</span> Listo para calificar</span>
+              <span><span style={{ color: "#C00000" }}>●</span> En curso</span>
+              <span><span style={{ color: "#555" }}>●</span> Sin iniciar</span>
+            </div>
           </div>
 
           {/* Puntaje total */}
@@ -568,6 +595,18 @@ export default function EvaluadorView({ session }) {
                 </span>
               )}
             </div>
+            {!isReadOnly && (
+              <div style={{
+                fontSize: 11, color: "#888", marginBottom: 10,
+                padding: "8px 12px", borderRadius: 8,
+                background: "rgba(255,255,255,0.03)",
+                border: "1px solid rgba(255,255,255,0.06)",
+                lineHeight: 1.5,
+              }}>
+                Asigna un puntaje de 0.0 a {tareas[0]?.puntos_max || 2}.0 por cada tarea.
+                El check verde indica que el grupo marcó esa tarea como completada (solo referencia).
+              </div>
+            )}
 
             {tareas.map((t) => {
               const checked = !!progreso[t.id];
