@@ -361,7 +361,7 @@ function ResultadosAnteriores({ fasesCerradas, resultados, todasTareas }) {
                 fontSize: 18, fontWeight: 800,
                 color: total >= maxTotal * 0.8 ? "#4CAF50" : total >= maxTotal * 0.5 ? "#FF9800" : "#ff4444",
               }}>
-                {total}/{maxTotal}
+                {total.toFixed(1)}/{maxTotal}
               </div>
             </div>
 
@@ -382,7 +382,7 @@ function ResultadosAnteriores({ fasesCerradas, resultados, todasTareas }) {
                         fontSize: 12, fontWeight: 700, flexShrink: 0, marginLeft: 8,
                         color: cal ? "#fff" : "#666",
                       }}>
-                        {cal ? `${cal.puntos}/${tarea.puntos_max}` : "—"}
+                        {cal ? `${Number(cal.puntos).toFixed(1)}/${tarea.puntos_max}` : "—"}
                       </div>
                     </div>
                   );
