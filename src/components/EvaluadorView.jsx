@@ -4,12 +4,15 @@ import {
   fetchTareas,
   fetchGruposLista,
   fetchCalificacionesFase,
+  fetchTodasCalificaciones,
   saveCalificacion,
   fetchProgresoGrupo,
   updateFase,
   getTimerGrupo,
   startTimerGrupo,
   stopTimerGrupo,
+  fetchTimersFase,
+  activarFase,
 } from "../supabaseHelpers";
 
 const inp = {
@@ -50,15 +53,25 @@ export default function EvaluadorView({ session }) {
   const [timerDraft, setTimerDraft] = useState(null);
   const [loaded, setLoaded] = useState(false);
   const [timerGrupo, setTimerGrupo] = useState(null);
+  const [timersAll, setTimersAll] = useState([]);
+  const [califsAll, setCalifsAll] = useState([]);
 
   const faseActiva = fases.find((f) => f.activa);
   const selectedFase = fases.find((f) => f.id === selectedFaseId);
   const isReadOnly = selectedFase ? selectedFase.bloqueada || !selectedFase.activa : true;
 
   const reload = useCallback(async () => {
-    const [f, g] = await Promise.all([fetchFases(), fetchGruposLista()]);
+    const [f, g, allC] = await Promise.all([fetchFases(), fetchGruposLista(), fetchTodasCalificaciones()]);
     setFases(f);
     setGrupos(g);
+    setCalifsAll(allC);
+    const activa = f.find((x) => x.activa);
+    if (activa) {
+      const tAll = await fetchTimersFase(activa.id);
+      setTimersAll(tAll);
+    } else {
+      setTimersAll([]);
+    }
     setLoaded(true);
   }, []);
 
@@ -68,10 +81,18 @@ export default function EvaluadorView({ session }) {
     const id = setInterval(async () => {
       await reload();
       if (selectedFaseId && selectedGrupoId) {
-        const tg = await getTimerGrupo(selectedGrupoId, selectedFaseId);
+        const [tg, c, p] = await Promise.all([
+          getTimerGrupo(selectedGrupoId, selectedFaseId),
+          fetchCalificacionesFase(selectedGrupoId, selectedFaseId),
+          fetchProgresoGrupo(selectedGrupoId),
+        ]);
         setTimerGrupo(tg);
+        setCalifs(c);
+        const pMap = {};
+        p.forEach((r) => { pMap[r.tarea_id] = r.completado; });
+        setProgreso(pMap);
       }
-    }, 10000);
+    }, 5000);
     return () => clearInterval(id);
   }, [reload, selectedFaseId, selectedGrupoId]);
 
@@ -175,8 +196,7 @@ export default function EvaluadorView({ session }) {
     setSaving(true);
     for (const t of tareas) {
       const val = parseFloat(puntajes[t.id]);
-      if (isNaN(val)) continue;
-      const clamped = Math.min(Math.max(0, Math.round(val * 10) / 10), t.puntos_max);
+      const clamped = isNaN(val) ? 0 : Math.min(Math.max(0, Math.round(val * 10) / 10), t.puntos_max);
       await saveCalificacion(
         selectedGrupoId,
         t.id,
@@ -389,6 +409,23 @@ export default function EvaluadorView({ session }) {
         </div>
       )}
 
+      {/* Controles de fase */}
+      {(() => {
+        const siguienteFase = fases.find((f) => !f.activa && !f.bloqueada);
+        return (
+          <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+            {!faseActiva && siguienteFase && (
+              <button
+                onClick={async () => { await activarFase(siguienteFase.id); await reload(); setToast(`${siguienteFase.nombre} activada`); }}
+                style={btnStyle("#4CAF50", "#fff")}
+              >
+                ▶ Activar {siguienteFase.nombre}
+              </button>
+            )}
+          </div>
+        );
+      })()}
+
       {/* Estado sin fase */}
       {!selectedFase && (
         <div style={{ textAlign: "center", padding: "40px 16px" }}>
@@ -420,22 +457,68 @@ export default function EvaluadorView({ session }) {
               gridTemplateColumns: "repeat(auto-fill, minmax(90px, 1fr))",
               gap: 6,
             }}>
-              {grupos.map((g) => (
-                <button
-                  key={g.id}
-                  onClick={() => setSelectedGrupoId(g.id)}
-                  style={{
-                    padding: "10px 8px", borderRadius: 8, border: "none",
-                    fontSize: 12, fontWeight: 700, cursor: "pointer",
-                    minHeight: 44,
-                    background: selectedGrupoId === g.id ? "#FF9800" : "rgba(255,255,255,0.06)",
-                    color: selectedGrupoId === g.id ? "#000" : "#aaa",
-                    transition: "background 0.2s",
-                  }}
-                >
-                  {g.nombre}
-                </button>
-              ))}
+              {grupos.map((g) => {
+                const tg = timersAll.find((t) => t.grupo_id === g.id);
+                const isSelected = selectedGrupoId === g.id;
+                const yaCalificado = selectedFaseId && califsAll.some(
+                  (c) => c.grupo_id === g.id && c.fase_id === selectedFaseId
+                );
+
+                let bgColor = "rgba(255,255,255,0.06)";
+                let txtColor = "#aaa";
+                let statusLabel = null;
+
+                if (isSelected) {
+                  bgColor = "#FF9800";
+                  txtColor = "#000";
+                } else if (yaCalificado) {
+                  bgColor = "rgba(76,175,80,0.15)";
+                  txtColor = "#4CAF50";
+                  statusLabel = "✓";
+                } else if (tg && tg.detenido) {
+                  bgColor = "rgba(255,152,0,0.15)";
+                  txtColor = "#FF9800";
+                  statusLabel = "Listo";
+                } else if (tg && tg.timer_inicio && !tg.detenido) {
+                  const rem = (faseActiva?.timer_minutos || 0) * 60 * 1000 - (now - new Date(tg.timer_inicio).getTime());
+                  if (rem <= 0) {
+                    bgColor = "rgba(255,152,0,0.15)";
+                    txtColor = "#FF9800";
+                    statusLabel = "Listo";
+                  } else {
+                    bgColor = "rgba(192,0,0,0.15)";
+                    txtColor = "#ff6666";
+                    statusLabel = "En curso";
+                  }
+                }
+
+                return (
+                  <button
+                    key={g.id}
+                    onClick={() => setSelectedGrupoId(g.id)}
+                    style={{
+                      padding: "8px 6px", borderRadius: 8, border: "none",
+                      fontSize: 12, fontWeight: 700, cursor: "pointer",
+                      minHeight: 44,
+                      background: bgColor,
+                      color: txtColor,
+                      transition: "background 0.2s",
+                      display: "flex", flexDirection: "column",
+                      alignItems: "center", justifyContent: "center", gap: 2,
+                    }}
+                  >
+                    {g.nombre}
+                    {statusLabel && !isSelected && (
+                      <span style={{
+                        fontSize: 9, fontWeight: 700,
+                        color: yaCalificado ? "#4CAF50" : txtColor,
+                      }}>
+                        {statusLabel}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
 

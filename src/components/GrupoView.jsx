@@ -59,7 +59,7 @@ export default function GrupoView({ session }) {
   useEffect(() => { reload(); }, [reload]);
 
   useEffect(() => {
-    const id = setInterval(reload, 10000);
+    const id = setInterval(reload, 5000);
     return () => clearInterval(id);
   }, [reload]);
 
