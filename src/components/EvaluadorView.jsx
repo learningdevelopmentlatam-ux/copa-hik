@@ -603,7 +603,7 @@ export default function EvaluadorView({ session }) {
                 border: "1px solid rgba(255,255,255,0.06)",
                 lineHeight: 1.5,
               }}>
-                Asigna un puntaje de 0.0 a {tareas[0]?.puntos_max || 2}.0 por cada tarea.
+                Asigna el puntaje de cada tarea según el máximo indicado.
                 El check verde indica que el grupo marcó esa tarea como completada (solo referencia).
               </div>
             )}
@@ -734,8 +734,103 @@ export default function EvaluadorView({ session }) {
               {saving ? "Guardando..." : "Guardar Calificaciones"}
             </button>
           )}
+
+          {/* Resumen general de todos los grupos */}
+          <div style={{ marginTop: 20 }}>
+            <div style={{
+              fontSize: 11, fontWeight: 700, color: "#666",
+              letterSpacing: 2, textTransform: "uppercase", marginBottom: 10,
+            }}>
+              RESUMEN GENERAL
+            </div>
+            <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+              <table style={{
+                width: "100%", minWidth: 360, borderCollapse: "separate",
+                borderSpacing: 0, fontSize: 11,
+              }}>
+                <thead>
+                  <tr>
+                    <th style={thEval}>Grupo</th>
+                    {fases.filter((f) => f.activa || f.bloqueada).sort((a, b) => a.orden - b.orden).map((f) => (
+                      <th key={f.id} style={thEval}>{f.nombre}</th>
+                    ))}
+                    <th style={thEval}>Prom.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {grupos.map((g) => {
+                    const fasesVisibles = fases.filter((f) => f.activa || f.bloqueada).sort((a, b) => a.orden - b.orden);
+                    const scores = fasesVisibles.map((f) => {
+                      const calsGrupo = califsAll.filter((c) => c.grupo_id === g.id && c.fase_id === f.id);
+                      const total = calsGrupo.reduce((s, c) => s + Number(c.puntos || 0), 0);
+                      const evaluador = calsGrupo.length > 0 ? calsGrupo[0].evaluador_nombre : null;
+                      return { faseId: f.id, total, count: calsGrupo.length, evaluador };
+                    });
+                    const conCal = scores.filter((s) => s.count > 0);
+                    const prom = conCal.length > 0 ? conCal.reduce((s, sc) => s + sc.total, 0) / conCal.length : null;
+
+                    return (
+                      <tr key={g.id} style={{
+                        background: selectedGrupoId === g.id ? "rgba(255,152,0,0.08)" : "transparent",
+                      }}>
+                        <td style={{ ...tdEval, textAlign: "left", fontWeight: 700, color: "#ccc" }}>
+                          {g.nombre}
+                        </td>
+                        {scores.map((sc) => (
+                          <td key={sc.faseId} style={tdEval}>
+                            {sc.count > 0 ? (
+                              <div>
+                                <div style={{
+                                  fontWeight: 700,
+                                  color: sc.total >= 8 ? "#4CAF50" : sc.total >= 5 ? "#FF9800" : "#ff4444",
+                                }}>
+                                  {sc.total.toFixed(1)}
+                                </div>
+                                <div style={{ fontSize: 9, color: "#888", marginTop: 1 }}>
+                                  {sc.evaluador}
+                                </div>
+                              </div>
+                            ) : (
+                              <span style={{ color: "#555" }}>—</span>
+                            )}
+                          </td>
+                        ))}
+                        <td style={{
+                          ...tdEval, fontWeight: 800, fontSize: 12,
+                          color: prom !== null ? (prom >= 8 ? "#4CAF50" : prom >= 5 ? "#FF9800" : "#ff4444") : "#555",
+                        }}>
+                          {prom !== null ? prom.toFixed(1) : "—"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div style={{ fontSize: 10, color: "#555", marginTop: 6 }}>
+              Debajo de cada puntaje aparece el nombre del evaluador que calificó.
+            </div>
+          </div>
         </>
       )}
     </div>
   );
 }
+
+const thEval = {
+  padding: "8px 6px",
+  textAlign: "center",
+  fontWeight: 700,
+  color: "#888",
+  borderBottom: "2px solid rgba(255,255,255,0.1)",
+  whiteSpace: "nowrap",
+  fontSize: 10,
+};
+
+const tdEval = {
+  padding: "10px 6px",
+  textAlign: "center",
+  borderBottom: "1px solid rgba(255,255,255,0.06)",
+  whiteSpace: "nowrap",
+  fontSize: 11,
+};
