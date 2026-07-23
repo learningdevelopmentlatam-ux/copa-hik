@@ -126,7 +126,6 @@ export default function PodioView() {
   }
 
   const top3 = ranking.slice(0, 3);
-  const rest = ranking.slice(3);
 
   return (
     <div>

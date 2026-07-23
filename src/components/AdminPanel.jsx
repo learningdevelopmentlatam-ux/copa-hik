@@ -96,11 +96,6 @@ export default function AdminPanel({ session }) {
     };
   }
 
-  function califCount(grupoId, faseId) {
-    return califs.filter(
-      (c) => c.grupo_id === grupoId && c.fase_id === faseId
-    ).length;
-  }
 
   async function doActivar(id) {
     await activarFase(id);
