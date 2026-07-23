@@ -102,13 +102,13 @@ export default function EvaluadorView({ session }) {
   }, []);
 
   useEffect(() => {
-    if (fases.length > 0 && selectedFaseId === null) {
-      const activa = fases.find((f) => f.activa);
-      if (activa) setSelectedFaseId(activa.id);
-      else {
-        const cerradas = fases.filter((f) => f.bloqueada).sort((a, b) => b.orden - a.orden);
-        if (cerradas.length > 0) setSelectedFaseId(cerradas[0].id);
-      }
+    if (fases.length === 0) return;
+    const activa = fases.find((f) => f.activa);
+    if (activa) {
+      setSelectedFaseId(activa.id);
+    } else if (selectedFaseId === null) {
+      const cerradas = fases.filter((f) => f.bloqueada).sort((a, b) => b.orden - a.orden);
+      if (cerradas.length > 0) setSelectedFaseId(cerradas[0].id);
     }
   }, [fases, selectedFaseId]);
 

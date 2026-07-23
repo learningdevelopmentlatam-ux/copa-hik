@@ -244,3 +244,22 @@ export async function updateTarea(id, updates) {
     .single();
   return data;
 }
+
+export async function createTarea(faseId, orden) {
+  const { data } = await supabase
+    .from("copa_tareas")
+    .insert({
+      fase_id: faseId,
+      titulo: `Tarea ${orden}`,
+      descripcion: "",
+      puntos_max: 2,
+      orden,
+    })
+    .select()
+    .single();
+  return data;
+}
+
+export async function deleteTarea(id) {
+  await supabase.from("copa_tareas").delete().eq("id", id);
+}

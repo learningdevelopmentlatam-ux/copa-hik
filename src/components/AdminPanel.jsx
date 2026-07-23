@@ -6,6 +6,8 @@ import {
   fetchTodasCalificaciones,
   updateFase,
   updateTarea,
+  createTarea,
+  deleteTarea,
   activarFase,
   cerrarFase,
   fetchTimersFase,
@@ -837,12 +839,25 @@ export default function AdminPanel({ session }) {
                             Límite: {t.limite_caracteres} chars
                           </span>
                           {!locked && (
-                            <button
-                              onClick={() => startEdit(t)}
-                              style={btn()}
-                            >
-                              Editar
-                            </button>
+                            <div style={{ display: "flex", gap: 6 }}>
+                              <button
+                                onClick={() => startEdit(t)}
+                                style={btn()}
+                              >
+                                Editar
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  if (!window.confirm(`¿Eliminar "${t.titulo}"?`)) return;
+                                  await deleteTarea(t.id);
+                                  setTareas(await fetchTareas(fase.id));
+                                  setToast("Tarea eliminada");
+                                }}
+                                style={btn("#ff4444", "#fff")}
+                              >
+                                Eliminar
+                              </button>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -861,6 +876,20 @@ export default function AdminPanel({ session }) {
                   >
                     Sin tareas configuradas
                   </div>
+                )}
+
+                {!locked && (
+                  <button
+                    onClick={async () => {
+                      const orden = tareas.length + 1;
+                      await createTarea(fase.id, orden);
+                      setTareas(await fetchTareas(fase.id));
+                      setToast("Tarea agregada");
+                    }}
+                    style={{ ...btn("#C00000", "#fff"), width: "100%", marginTop: 8 }}
+                  >
+                    + Agregar tarea
+                  </button>
                 )}
               </div>
             )}
