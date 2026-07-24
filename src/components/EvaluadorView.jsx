@@ -326,6 +326,17 @@ export default function EvaluadorView({ session }) {
             </div>
           </div>
 
+          {faseActiva.nota && (
+            <div style={{
+              padding: "8px 12px", borderRadius: 8, marginBottom: 10,
+              background: "rgba(255,152,0,0.1)",
+              border: "1px solid rgba(255,152,0,0.15)",
+              fontSize: 11, color: "#FF9800", lineHeight: 1.5,
+            }}>
+              <span style={{ fontWeight: 700 }}>Nota:</span> {faseActiva.nota}
+            </div>
+          )}
+
           {timer && (
             <div>
               <div style={{
